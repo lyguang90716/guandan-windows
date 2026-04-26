@@ -4,6 +4,9 @@
 
 - English (current): `README.en.md`
 - 简体中文: [README.md](./README.md)
+- Русский: [README.ru.md](./README.ru.md)
+- 日本語: [README.ja.md](./README.ja.md)
+- 한국어: [README.ko.md](./README.ko.md)
 
 Guandan Master is a Guandan card game project focused on local play, with LAN multiplayer support.  
 The goal is to keep rules accurate, gameplay smooth, AI competitive, and architecture maintainable.

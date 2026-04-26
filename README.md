@@ -4,6 +4,9 @@
 
 - 简体中文（当前）：`README.md`
 - English: [README.en.md](./README.en.md)
+- Русский: [README.ru.md](./README.ru.md)
+- 日本語: [README.ja.md](./README.ja.md)
+- 한국어: [README.ko.md](./README.ko.md)
 
 一个以本地对战为核心、支持局域网联机的掼蛋项目。  
 目标是把“规则正确、节奏顺畅、AI可对抗、可持续演进”这四件事同时做好。
