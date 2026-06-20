@@ -1,4 +1,4 @@
-# --- Stage 1: Build Frontend ---
+# --- Stage 1: 编译前端 React ---
 FROM node:18-alpine AS frontend-builder
 WORKDIR /app
 COPY package*.json ./
@@ -6,25 +6,45 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# --- Stage 2: Final Runtime ---
+# --- Stage 2: 运行后端并用 Nginx 合并端口 ---
 FROM node:18-alpine
 WORKDIR /app
 
-# 1. 复制后端服务器代码及依赖
+# 1. 安装 Nginx 和 pm2（用来同时守护 Node 和 Nginx 进程）
+RUN apk add --no-cache nginx && npm install -g pm2
+
+# 2. 复制并安装后端依赖
 COPY server/ ./server/
-# 如果 server 目录下有独立的 package.json，则安装它，否则直接用根目录的
 COPY package*.json ./
 RUN npm install --production
 
-# 2. 安装一个轻量级的静态文件服务器（用来跑前端 React 产物）
-RUN npm install -g serve
+# 3. 复制前端编译产物到 Nginx 目录
+COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
-# 3. 从第一阶段复制编译好的前端静态文件 (dist 目录)
-COPY --from=frontend-builder /app/dist ./dist
+# 4. 直接在容器内写入 Nginx 配置文件，实现单端口分流
+RUN echo ' \
+server { \
+    listen 80; \
+    \
+    # 1. 访问根目录时，直接返回 React 网页 \
+    location / { \
+        root /usr/share/nginx/html; \
+        index index.html; \
+        try_files $uri $uri/ /index.html; \
+    } \
+    \
+    # 2. 当网页连接 socket.io 时，Nginx 悄悄转发给后端的 3001 端口 \
+    location /socket.io/ { \
+        proxy_pass http://127.0.0.1:3001; \
+        proxy_http_version 1.1; \
+        proxy_set_header Upgrade $http_upgrade; \
+        proxy_set_header Connection "Upgrade"; \
+        proxy_set_header Host $host; \
+    } \
+}' > /etc/nginx/http.d/default.conf
 
-# 4. 暴露端口：前端默认 5173(或用serve的3000)，后端 Socket.IO 默认 3001
-EXPOSE 3000
-EXPOSE 3001
+# 5. 此时对外只需要暴露一个 80 端口
+EXPOSE 80
 
-# 5. 同时启动前端托管和后端 Node 服务
-CMD ["sh", "-c", "serve -s dist -l 3000 & node server/index.js"]
+# 6. 启动后端服务和 Nginx
+CMD ["sh", "-c", "node server/index.js & nginx -g 'daemon off;'"]
